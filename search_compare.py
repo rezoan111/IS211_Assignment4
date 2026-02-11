@@ -1,93 +1,139 @@
-import time
 import random
+import time
 
+# Week 4 - Part I
+# Here I compare 4 search algorithms and see which one is faster (worst case).
+# Worst case = searching for something that is NOT in the list.
+# Lists are only positive ints, so 99999999 should never be in the list.
 
-def get_me_random_list(n):
-    """Generate list of n elements in random order
-    
-    :params: n: Number of elements in the list
-    :returns: A list with n elements in random order
-    """
-    a_list = list(range(n))
-    random.shuffle(a_list)
-    return a_list
+TARGET = 99999999
+NUM_LISTS = 100
+SIZES = [500, 1000, 5000]
+RANDOM_MAX = 1_000_000
 
 
 def sequential_search(a_list, item):
-    pos = 0
-    found = False
+    # normal sequential search (not sorted)
+    start = time.perf_counter()
 
-    while pos < len(a_list) and not found:
-        if a_list[pos] == item:
-            found = True
-        else:
-            pos = pos + 1
+    for x in a_list:
+        if x == item:
+            end = time.perf_counter()
+            return True, end - start
 
-    return found
+    end = time.perf_counter()
+    return False, end - start
 
 
 def ordered_sequential_search(a_list, item):
-    pos = 0
-    found = False
-    stop = False
-    while pos < len(a_list) and not found and not stop:
-        if a_list[pos] == item:
-            found = True
+    # ordered sequential search (list must be sorted)
+    start = time.perf_counter()
+
+    for x in a_list:
+        if x == item:
+            end = time.perf_counter()
+            return True, end - start
+
+        # early stop because list is sorted
+        if x > item:
+            break
+
+    end = time.perf_counter()
+    return False, end - start
+
+
+def binary_search_iterative(a_list, item):
+    # iterative binary search (list must be sorted)
+    start = time.perf_counter()
+
+    low = 0
+    high = len(a_list) - 1
+
+    while low <= high:
+        mid = (low + high) // 2
+
+        if a_list[mid] == item:
+            end = time.perf_counter()
+            return True, end - start
+        elif item < a_list[mid]:
+            high = mid - 1
         else:
-            if a_list[pos] > item:
-                stop = True
-            else:
-                pos = pos + 1
+            low = mid + 1
 
-    return found
+    end = time.perf_counter()
+    return False, end - start
 
 
-def binary_search_iterative(a_list,item):
-    first = 0
+def binary_search_recursive(a_list, item):
+    # recursive binary search (list must be sorted)
 
-    last = len(a_list) - 1
-    found = False
-    while first <= last and not found:
-        midpoint = (first + last) // 2
-        if a_list[midpoint] == item:
-            found = True
-        else:
-            if item < a_list[midpoint]:
-                last = midpoint - 1
-            else:
-                first = midpoint + 1
+    def _helper(lst, item_, low, high):
+        if low > high:
+            return False
 
-    return found
-    
-    
-def binary_search_recursive(a_list,item):
-    if len(a_list) == 0:
-        return False
-    else:
-        midpoint = len(a_list) // 2
-        if a_list[midpoint] == item:
+        mid = (low + high) // 2
+
+        if lst[mid] == item_:
             return True
+        elif item_ < lst[mid]:
+            return _helper(lst, item_, low, mid - 1)
         else:
-            if item < a_list[midpoint]:
-                return binary_search_recursive(a_list[:midpoint], item)
-            else:
-                return binary_search_recursive(a_list[midpoint + 1:], item)
+            return _helper(lst, item_, mid + 1, high)
+
+    start = time.perf_counter()
+    result = _helper(a_list, item, 0, len(a_list) - 1)
+    end = time.perf_counter()
+
+    return result, end - start
+
+
+def _avg_time(times):
+    return sum(times) / len(times)
+
+
+def main():
+    # For each size: 500, 1000, 5000
+    # make 100 lists and run each algorithm, then print average time.
+    for n in SIZES:
+        lists = [
+            [random.randint(1, RANDOM_MAX) for _ in range(n)]
+            for _ in range(NUM_LISTS)
+        ]
+
+        # 1) Sequential Search (no sort needed)
+        seq_times = []
+        for lst in lists:
+            _, t = sequential_search(lst, TARGET)
+            seq_times.append(t)
+        print(f"Sequential Search took {_avg_time(seq_times):10.7f} seconds to run, on average")
+
+        # For the rest, list must be sorted.
+        # IMPORTANT: sort before calling search so sort time is not included.
+
+        # 2) Ordered Sequential Search
+        ord_times = []
+        for lst in lists:
+            sorted_lst = sorted(lst)
+            _, t = ordered_sequential_search(sorted_lst, TARGET)
+            ord_times.append(t)
+        print(f"Ordered Sequential Search took {_avg_time(ord_times):10.7f} seconds to run, on average")
+
+        # 3) Binary Search Iterative
+        bin_iter_times = []
+        for lst in lists:
+            sorted_lst = sorted(lst)
+            _, t = binary_search_iterative(sorted_lst, TARGET)
+            bin_iter_times.append(t)
+        print(f"Binary Search (Iterative) took {_avg_time(bin_iter_times):10.7f} seconds to run, on average")
+
+        # 4) Binary Search Recursive
+        bin_rec_times = []
+        for lst in lists:
+            sorted_lst = sorted(lst)
+            _, t = binary_search_recursive(sorted_lst, TARGET)
+            bin_rec_times.append(t)
+        print(f"Binary Search (Recursive) took {_avg_time(bin_rec_times):10.7f} seconds to run, on average")
 
 
 if __name__ == "__main__":
-    """Main entry point"""
-    the_size = 500
-
-    total_time = 0
-    for i in range(100):
-        mylist = get_me_random_list(the_size)
-        # sorting is not needed for sequential search.
-        mylist = sorted(mylist)
-
-        start = time.time()
-        check = binary_search_iterative(mylist, 99999999)
-        time_spent = time.time() - start
-        total_time += time_spent
-
-    avg_time = total_time / 100
-    print(f"Binary Search Iterative took {avg_time:10.7f} seconds to run, on average for a list of {the_size} elements")
+    main()
